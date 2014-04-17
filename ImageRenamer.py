@@ -144,9 +144,9 @@ class ConfigHelper():
         self.config_separator = config_separator
         self.dirname = dirname
         self.config_file = filename
-        self.default_configuration = '<inPath>/thumbnail/<Filename>.jpg -> <outPath>/Brickyard/thumb/<CatalogItem>_thumb.jpg\n'\
-        '<inPath>/ 800 zoom/<Filename>.jpg -> <outPath>/Brickyard/zoom/<CatalogItem>_zoom.jpg\n'\
-        '<inPath>/main image/<Filename>.jpg -> <outPath>/Brickyard/main/<CatalogItem>_main.jpg'
+        self.default_configuration = '<inPath>/100 thumbnail/<Filename>.jpg -> <outPath>/Brickyard/thumb/<CatalogItem>_thumb.jpg\n'\
+        '<inPath>/800 zoom/<Filename>.jpg -> <outPath>/Brickyard/zoom/<CatalogItem>_zoom.jpg\n'\
+        '<inPath>/350 main image/<Filename>.jpg -> <outPath>/Brickyard/main/<CatalogItem>_main.jpg'
         self.panel = tasks_labelframe
         self.tasks = []
 
@@ -178,7 +178,7 @@ class ConfigHelper():
         return re.sub('[^A-Za-z0-9]+', "_", string)
     
     def make_dirs(self, path):
-        dirs = os.path.dirname(path)   
+        dirs = os.path.dirname(path)
         if not os.path.exists(dirs):
             os.makedirs(dirs)
             
@@ -188,8 +188,9 @@ class ConfigHelper():
     
     def execute(self, vars):
         for i in range(len(self.tasks)):
+
             template = self.tasks[i]
-        return self.rename(self.compile(template[0], vars), self.compile(template[1], vars))
+            self.rename(self.compile(template[0], vars), self.compile(template[1], vars))
 
     def compile(self, template, vars):
         return re.sub(r'<([a-zA-Z0-9_]+)>', lambda matchobj: self.match(matchobj.group(1), vars), template)
