@@ -52,6 +52,9 @@ class ScrollbarLabelFrame(LabelFrame):
             child.destroy()
 
 class TasksLabelFrame(ScrollbarLabelFrame):
+    def display_tasks(self, tasks):
+        for t in tasks:
+            self.display_task(t, tasks.index(t) + 1)
     def display_task(self, task, task_num):
         Label(self.frame, text = str(task_num) + '. ' + task).grid(sticky = "W")
         ScrollbarLabelFrame.create_interior(self)
