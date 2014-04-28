@@ -8,24 +8,93 @@ import re
 import shutil
 from scrollbarframes import TasksLabelFrame, ExcelTableFrame
 
-class ImageRenamer(Frame):
+PROJECT = "ImageRenamer"
+
+CONFIG = """<inPath>/100 thumbnail/<Filename>.jpg -> <outPath>/Brickyard/thumb/<CatalogItem>_thumb.jpg
+<inPath>/800 zoom/<Filename>.jpg -> <outPath>/Brickyard/zoom/<CatalogItem>_zoom.jpg
+<inPath>/350 main image/<Filename>.jpg -> <outPath>/Brickyard/main/<CatalogItem>_main.jpg"""
+
+class Worker(object):
+    tasks = []
+
+    def __init__(self, config_file="config.txt", log_file="errorlog.txt"):
+        self.work_dir = PROJECT
+        self.config_file = config_file
+        self.log_file = log_file
+
+    def read_config(self):
+        path = self.get_config()
+        if not os.path.isfile(path):
+            with open(path, "w") as f:
+                f.write(CONFIG)
+            config = CONFIG.split("\n")
+        else:
+            with open(path, "r") as f:
+                config = f.readlines()
+
+        config = [line.rstrip("\r\n") for line in config]
+        for task in config:
+            if len(task) > 0:
+                self.add_task(task)
+        return config
+
+    def get_work_dir(self):
+        path = os.path.join(os.path.expanduser("~"), self.work_dir)
+        if not os.path.exists(path):
+            self.make_dirs(path)
+        return path
+
+    def get_config(self):
+        return os.path.join(self.get_work_dir(), self.config_file)
+
+    def get_log(self):
+        return os.path.join(self.get_work_dir(), self.log_file)
     
-    def __init__(self, parent, config_helper, log_filename):
+    def make_dirs(self, path):
+        dirs = os.path.dirname(path)
+        if not os.path.exists(dirs):
+            os.makedirs(dirs)
+
+    def rename(self, oldpath, newpath):
+        self.make_dirs(newpath)
+        return shutil.copy(oldpath, newpath)
+    
+    def execute(self, variables):
+        for task in self.tasks:
+            self.rename(self.compile(task[0], variables), self.compile(task[1], variables))
+
+    def compile(self, template, variables):
+        return re.sub(r'<([a-zA-Z0-9_]+)>', lambda matchobj:  self.match(matchobj.group(1), variables), template)
+
+    def match(self, key, vars):
+        result = vars[key]
+        #check empty cells only for keys existed in task configuration
+        if result:
+            return result
+        else:
+            raise ValueError( "Value for <" + key + "> is empty.")
+        
+    def add_task(self, task):
+        try:
+            s = re.split(r'\s*->\s*', task)
+            self.tasks.append((s[0], s[1]))
+        except:
+            raise ValueError("Cannot parse task '" + task + "'.")
+
+class GUI(Worker, Frame):
+    def __init__(self, parent):
         Frame.__init__(self, parent)
-        #settings global variables
-        self._log_file = config_helper.get_app_dir() + log_filename       
-        default_font = tkFont.nametofont("TkDefaultFont")
-        self.customFont = default_font
-        self.vars = {}
-        self.config_helper = config_helper
+        Worker.__init__(self)
+        self.customFont = tkFont.nametofont("TkDefaultFont")
+        self.variables = {}
         self.pack()
         self.create_widgets()
     
     def show_in_row(self, panel, row, height):
-        panel.grid( row = row, column = 0, sticky='W', \
-                 padx=10, pady=5, ipady=5)
+        panel.grid( row = row, column = 0, sticky='W', padx=10, pady=5, ipady=5)
         panel.config(font=self.customFont, width = 580, height = height)
-        if self.isWindows(): panel.config(width = 500)
+        if self.is_windows():
+            panel.config(width = 500)
         panel.grid_propagate(0)
         
     def create_widgets(self):    
@@ -42,8 +111,10 @@ class ImageRenamer(Frame):
         self.show_in_row(outputFrame, 3, height = 120)
      
         self.result = Text(outputFrame, wrap=WORD, height = 13, font=self.customFont)
-        if self.isWindows(): self.result.config(width = 80)
-        else: self.result.config(width = 69) 
+        if self.is_windows():
+            self.result.config(width = 80)
+        else:
+            self.result.config(width = 69) 
         self.result.pack(side=LEFT)
         self.result.tag_configure('error', foreground='red')
         self.scrollbar = Scrollbar(outputFrame)
@@ -56,15 +127,15 @@ class ImageRenamer(Frame):
         fileName = self.add_block("Data file*:", inputFrame, 3, self.select_file_event, self.customFont, required = True)
 
         self.start_button = Button(inputFrame, command = lambda: self.start_button_event(fileName.get()), text = "Start", font=self.customFont)
-        if self.isWindows(): self.start_button.config(width = 5)
+        if self.is_windows():
+            self.start_button.config(width = 5)
         self.start_button.grid(row = 4, column = 4, sticky='W', padx=10, pady=2)
 
         try:
-            tasks = self.config_helper.read_config()
+            tasks = self.read_config()
             self.tasksFrame.display_tasks(tasks)
         except ValueError as e:
-            self.display_message(e.message + " Please check " + self._log_file + " and reload application.", severity = 'error')
- 
+            self.message(e.message + " Please check " + self.get_config() + " and reload application.")
 
     def add_block(self, label, parent, row, buttonevent, font, key = None, required = False):
         Label(parent, text = label, font = font).grid(row = row, column = 0, sticky=E, padx=5, pady=2)
@@ -73,173 +144,96 @@ class ImageRenamer(Frame):
         entry.grid(row = row, column = 2, pady=2)
         button = Button(parent, command = lambda: buttonevent(var, key), text = "...", font=font)
         button.grid(row = row, column = 3, sticky='W', padx=5, pady=2)
-        if self.isWindows():
+        if self.is_windows():
             button.config(width = 4)
             entry.config(width = 50)
         return var
     
-    def isWindows(self):
+    def is_windows(self):
         return sys.platform == 'win32'
     
     def select_file_event(self, stringvar, key):
         stringvar.set(askopenfilename())
         
-    def display_message(self, text, clear = False, severity = 'info'):
+    def message(self, text, clear = False, severity = 'error'):
         if clear:
             self.result.delete(0.0, END)
-       
-        self.result.insert(END, text + "\n", ( 'error' if severity == 'error' else '')) 
+        self.result.insert(END, text + "\n", ('error' if severity == 'error' else '')) 
         
     def select_dir_event(self, stringvar, key):
         path = askdirectory()
         stringvar.set(path)
-        self.vars[key] =  path
+        self.variables[key] = path
 
     def start_button_event(self, filename):
-        
         if not filename:
-            self.display_message( "Data file location was not specified.", True, severity = 'error')
+            self.message("Data file location was not specified.", True)
             return
         try:
-            reader = ExcelReader(filename, self.config_helper, self.display_message, self.vars)
-        except XLRDError as e:
-            self.display_message("Unsupported format or corrupted file.", severity = 'error');
-            return
-           
-        try:      
+            reader = ExcelReader(filename, self.message)
             s = reader.get_sheets()[0]
- 
             self.filePreviewFrame.set_excel_sheet(s)
-            reader.read_sheet(0)
- 
+            reader.run(0, self.execute, self.variables.copy())
+        except XLRDError as e:
+            self.message("Unsupported format or corrupted file.")
         except Exception:
-            self.display_message("Exception occured. Please look at " + self._log_file + " for details.", severity = 'error')
-            sys.stderr = open(self._log_file, "a")
+            self.message("Exception occured. Please look at " + self.get_log() + " for details.")
+            sys.stderr = open(self.get_log(), "a")
             sys.stderr.write(traceback.format_exc())
             sys.stderr.close()
 
-class ExcelReader():
-    def __init__(self, path, data_processor, show_message_func = None, var_dict = {}):
-        
-        if show_message_func:
-            self.show_message = show_message_func
-        self.show_message("Reading... " + path + "\n", clear = True)  
+class ExcelReader(object):
+    def __init__(self, path, message=None):
+        if message:
+            self.message = message
+        self.message("Reading... " + path + "\n", clear = True, severity = 'info')  
         self.workbook = open_workbook(path)
-        self.vars = var_dict
-        self.data_processor = data_processor
-    def show_message(self, text, clear = False, severity = 'info'):
+
+    def message(self, text, clear=False, severity="error"):
         if clear:
             print "\n"
-        print severity , ":", text
+        print severity, ":", text
         
     def get_sheets(self):     
         return self.workbook.sheets()
     
-    def read_sheet(self, num):
+    def run(self, num, execute, variables={}):
+        print variables
         try:
-            s = self.workbook.sheets()[num]
+            s = self.get_sheets()[num]
             if s.nrows > 0:             
                 columns = s.row(0)
                 for row in range(1, s.nrows):
                     try:
-                        self.build_excel_var(self.vars, columns, s.row(row))
-                        self.data_processor.execute(self.vars)
-                    except ValueError as er:
-                        self.show_message("Skipping row number " +  str(row + 1) + ": " + er.message, severity = 'error')
-                    except IOError as er:
-                        self.show_message("Skipping row number " +  str(row + 1) + ": " + er.filename + " was not found ", severity = 'error')
-            self.show_message("Completed.\n")
+                        variables = self.build_excel_var(variables, columns, s.row(row))
+                        execute(variables)
+                    except IOError as e:
+                        self.message("Skipping row number " +  str(row + 1) + ": " + e.strerror + " " + e.filename)
+                    except ValueError as e:
+                        self.message("Skipping row number " +  str(row + 1) + ": " + e.message)
+            self.message("Completed.\n", severity="info")
         except KeyError as er:
-            self.show_message("Value for tag <" + er.message + "> was not found." , severity = 'error')
+            self.message("Value for tag <" + er.message + "> was not found.")
         except OSError as er:
-            self.show_message(er.strerror, severity = 'error')
-
+            self.message(er.strerror)
         
-    def build_excel_var(self, vars, keys, values):       
+    def build_excel_var(self, variables, keys, values):       
         for i in range(len(keys)):
-            vars[str(keys[i].value)] = self.sanitize(str(values[i].value))
-        return vars
+            variables[str(keys[i].value)] = self.sanitize(str(values[i].value))
+        return variables
 
     def sanitize(self, string):
         return re.sub('[^A-Za-z0-9]+', "_", string)
-    
-class ConfigHelper():
-    def __init__(self, dirname, config_separator = "->", filename = "renamer_configfile.txt"):
-        self.config_separator = config_separator
-        self.dirname = dirname
-        self.config_file = filename
-        self.default_configuration = '<inPath>/100 thumbnail/<Filename>.jpg -> <outPath>/Brickyard/thumb/<CatalogItem>_thumb.jpg\n'\
-        '<inPath>/800 zoom/<Filename>.jpg -> <outPath>/Brickyard/zoom/<CatalogItem>_zoom.jpg\n'\
-        '<inPath>/350 main image/<Filename>.jpg -> <outPath>/Brickyard/main/<CatalogItem>_main.jpg'
-        self.tasks = []
-
-    def read_config(self):
-        path = self.get_app_dir() + self.config_file
-    
-        if not os.path.isfile(path):
-            f = open(path, "w")
-            f.write(self.default_configuration)
-            f.close()
-
-        f = open(path, "r")
-        tmp_list = []
-        for line in f:       
-            task = line.rstrip("\r\n")
-            if len(task) > 0:
-                tmp_list.append(task)
-                self.add_task(task)
-        return tmp_list
-
-    
-    def get_app_dir(self):
-        path = os.path.join(os.path.expanduser("~"), self.dirname + "/")
-        if not os.path.exists(path):
-            self.make_dirs(path)
-        return path
-    
-    def make_dirs(self, path):
-        dirs = os.path.dirname(path)
-        if not os.path.exists(dirs):
-            os.makedirs(dirs)
-            
-    def rename(self, oldpath, newpath):
-        self.make_dirs(newpath)
-        return shutil.copy(oldpath, newpath)
-    
-    def execute(self, vars):
-        for i in range(len(self.tasks)):
-
-            template = self.tasks[i]
-            self.rename(self.compile(template[0], vars), self.compile(template[1], vars))
-
-    def compile(self, template, vars):
-        return re.sub(r'<([a-zA-Z0-9_]+)>', lambda matchobj: self.match(matchobj.group(1), vars), template)
-
-    def match(self, key, vars):
-        result = vars[key]
-        if result:
-            return result
-        else: raise ValueError( "Value for <" + key + "> is empty.")
-
-    def add_task(self, task):
-        if not self.config_separator in task:
-            raise ValueError( "Separator '" + self.config_separator + "' is missing in task '" + task + "'.")
-        task = re.split(r'\s*->\s*', task)
-        self.tasks.append(tuple(task))
-
 
 if __name__ == '__main__':
-    title = "ImageRenamer"
     root = Tk()
-    root.title(title)
+    root.title(PROJECT)
     root.resizable(0,0)
     #hide window until in will be filled in with widgets
     root.attributes('-alpha', 0.0)
     root.iconify()
-    config = ConfigHelper(title)
-    log_file = "Renamer_errorlog.txt" 
     try:
-        r = ImageRenamer(root, config, log_file)
+        worker = GUI(root)
         #center window
         root.deiconify()
         # make window always be on top of others
@@ -252,6 +246,6 @@ if __name__ == '__main__':
         root.attributes('-alpha', 1.0) 
         root.mainloop()
     except:
-        sys.stderr = open(config.get_app_dir() + log_file, 'a')
+        sys.stderr = open(Worker().get_log(), 'a')
         sys.stderr.write(traceback.format_exc())
         sys.stderr.close()
