@@ -11,7 +11,9 @@ Short description:
 ImageRenamer.py - main functionality
 
 integrationtest.py - integration tests. Recieves variables and spreadsheet location urls through the command line. 
+
 Example:
+
 python integrationtest.py inPath=/Users/ma4ilda/imagerenamer/tests outPath=/Users/ma4ilda/imagerenamer/tests/ /Users/ma4ilda/imagerenamer/tests/BRICKYARD_FILE_LOAD.xls /Users/ma4ilda/imagerenamer/tests/test_wrong_column.xlsx
 
 scroolbarframes.py - contains customized tkinter LabelFrame with attached horizontal Scrollbar
@@ -21,11 +23,14 @@ build.bat - bat file uses setup.py for building Win application installation wit
 MacOS folder - contains ImageRenamer's app package for Mac OS X 10.6+
 Windows folder - contains .exe file, msi and zip installation folder of ImageRenamer application built.
 
-3. Configuration.
+Configuration.
 
 Script configuration is performed by tasks defined in config.txt. This configuration file should be located in ImageRenamer folder of current user:
+
 C:/User/<current user folder>/ImageRenamer/ for Windows OS
+
 /Users/<current user>/ImageRenamer/ for MacOS
+
 
 If ImageRenamer folder and configuration file doesn’t exist script automatically generates folder and default config file.
 Every task defines rules by which paths for copying and renaming files will be generated.
