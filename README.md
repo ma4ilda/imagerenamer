@@ -39,7 +39,7 @@ Example1 of config file content. Created on Mac OS:
 
 <inPath>/thumbnail/<Filename>.jpg -> <outPath>/Brickyard/thumb/<CatalogItem>_thumb.jpg
 
-<inPath>/ 800 zoom/<Filename>.jpg -> <outPath>/Brickyard/zoom/<CatalogItem>_zoom.jpg
+<inPath>/800 zoom/<Filename>.jpg -> <outPath>/Brickyard/zoom/<CatalogItem>_zoom.jpg
 
 <inPath>/main image/<Filename>.jpg -> <outPath>/Brickyard/main/<CatalogItem>_main.jpg
 
