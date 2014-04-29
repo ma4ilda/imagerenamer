@@ -39,7 +39,7 @@ class Worker(object):
         return config
 
     def get_work_dir(self):
-        path = os.path.join(os.path.expanduser("~"), self.work_dir)
+        path = os.path.join(os.path.expanduser("~"), self.work_dir, '')
         if not os.path.exists(path):
             self.make_dirs(path)
         return path
@@ -198,7 +198,6 @@ class ExcelReader(object):
         return self.workbook.sheets()
     
     def run(self, num, execute, variables={}):
-        print variables
         try:
             s = self.get_sheets()[num]
             if s.nrows > 0:             
