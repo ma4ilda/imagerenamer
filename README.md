@@ -26,6 +26,7 @@ Windows folder - contains .exe file, msi and zip installation folder of ImageRen
 Script configuration is performed by tasks defined in config.txt. This configuration file should be located in ImageRenamer folder of current user:
 C:/User/<current user folder>/ImageRenamer/ for Windows OS
 /Users/<current user>/ImageRenamer/ for MacOS
+
 If ImageRenamer folder and configuration file doesn’t exist script automatically generates folder and default config file.
 Every task defines rules by which paths for copying and renaming files will be generated.
 
